@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.collections.FXCollections?>
+<?import java.lang.String?>
+<?import javafx.scene.control.DatePicker?>
+
+<GridPane alignment="CENTER"
+          xmlns="http://javafx.com/javafx/23.0.1"
+          xmlns:fx="http://javafx.com/fxml/1"
+          fx:controller="com.kingartur1000.javacourseproject.Controller"
+          stylesheets="@style.css">
+
+    <columnConstraints>
+        <ColumnConstraints percentWidth="15"/>
+        <ColumnConstraints percentWidth="85"/>
+    </columnConstraints>
+    <rowConstraints>
+        <RowConstraints percentHeight="100"/>
+    </rowConstraints>
+
+    <!-- Боковое меню -->
+    <VBox spacing="15" styleClass="sidebar" GridPane.columnIndex="0">
+        <Label text="Фильтры" styleClass="sidebar-title"/>
+
+        <Label text="Группа:"/>
+        <ComboBox fx:id="group_ComboBox" promptText="Выбери группу" maxWidth="Infinity"/>
+
+        <Label text="Дата посещения:"/>
+        <DatePicker fx:id="datePicker" promptText="YYYY-MM-DD"/>
+
+        <Button onAction="#filterByDate" text="Показать по дате" maxWidth="Infinity" styleClass="primary-btn"/>
+        <Button onAction="#addGroup" text="Добавить группу" maxWidth="Infinity"/>
+        <Button onAction="#deleteGroup" text="Удалить группу" maxWidth="Infinity"/>
+        <Button onAction="#resetFilters" text="Сбросить фильтры" maxWidth="Infinity"/>
+    </VBox>
+
+    <!-- Основная область -->
+    <VBox spacing="10" GridPane.columnIndex="1" styleClass="content">
+        <Label text="Список посещений" styleClass="header-title"/>
+
+        <TableView fx:id="attendanceTable" VBox.vgrow="ALWAYS">
+            <columns>
+                <TableColumn fx:id="fioCol" text="ФИО" prefWidth="280"/>
+                <TableColumn fx:id="groupCol" text="Группа" prefWidth="120"/>
+                <TableColumn fx:id="dateCol" text="Дата" prefWidth="140"/>
+                <TableColumn fx:id="visitsCol" text="Кол-во посещений" prefWidth="180"/>
+            </columns>
+        </TableView>
+
+        <HBox spacing="10">
+            <Button  onAction="#addRecord" text="Добавить запись" styleClass="primary-btn"/>
+            <Button onAction="#deleteRecord" text="Удалить запись" styleClass="danger-btn"/>
+            <Button onAction="#sortBySurname" text="Сортировать по фамилии"/>
+            <Button onAction="#sortByVisit" text="Сортировать по посещениям"/>
+            <Region HBox.hgrow="ALWAYS"/>
+            <Button onAction="#saveToExcel" text="Сохранить в Excel" styleClass="primary-btn"/>
+            <Button onAction="#reloadFromExcel" text="Обновить из Excel"/>
+        </HBox>
+    </VBox>
+</GridPane>

@@ -11,6 +11,14 @@ module com.kingartur1000.javacourseproject {
     requires eu.hansolo.tilesfx;
     requires com.almasb.fxgl.all;
 
+    // Apache POI
+    requires org.apache.poi.ooxml;
+    requires org.apache.poi.poi;
+    requires org.apache.commons.collections4;
+    requires org.apache.commons.compress;
+    requires org.apache.commons.io;
+    requires org.apache.xmlbeans;
+
     opens com.kingartur1000.javacourseproject to javafx.fxml;
     exports com.kingartur1000.javacourseproject;
 }

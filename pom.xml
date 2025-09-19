@@ -111,6 +111,12 @@
             <version>${junit.version}</version>
             <scope>test</scope>
         </dependency>
+
+        <dependency>
+            <groupId>org.apache.poi</groupId>
+            <artifactId>poi-ooxml</artifactId>
+            <version>5.4.0</version>
+        </dependency>
     </dependencies>
 
     <build>
@@ -134,7 +140,7 @@
                         <id>default-cli</id>
                         <configuration>
                             <mainClass>
-                                com.kingartur1000.javacourseproject/com.kingartur1000.javacourseproject.HelloApplication
+                                com.kingartur1000.javacourseproject/com.kingartur1000.javacourseproject.Main
                             </mainClass>
                             <launcher>app</launcher>
                             <jlinkZipName>app</jlinkZipName>

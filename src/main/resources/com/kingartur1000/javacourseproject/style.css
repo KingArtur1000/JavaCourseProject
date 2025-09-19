@@ -1,0 +1,39 @@
+.root {
+    -fx-font-family: "Segoe UI", "Inter", "Roboto";
+    -fx-background-color: #f4f6f8;
+}
+
+.sidebar {
+    -fx-background-color: #2f3b52;
+    -fx-padding: 16;
+}
+
+.sidebar-title {
+    -fx-text-fill: white;
+    -fx-font-size: 16px;
+    -fx-font-weight: bold;
+}
+
+.sidebar .label {
+    -fx-text-fill: white;
+}
+
+.primary-btn {
+    -fx-background-color: #4CAF50;
+    -fx-text-fill: white;
+}
+
+.danger-btn {
+    -fx-background-color: #e53935;
+    -fx-text-fill: white;
+}
+
+.content {
+    -fx-padding: 16;
+}
+
+.header-title {
+    -fx-font-size: 20px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #2b2b2b;
+}
