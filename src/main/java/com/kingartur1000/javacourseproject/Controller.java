@@ -1,5 +1,8 @@
 package com.kingartur1000.javacourseproject;
 
+import javafx.beans.property.SimpleIntegerProperty;
+import javafx.beans.property.SimpleObjectProperty;
+import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
@@ -7,51 +10,100 @@ import javafx.scene.control.*;
 import javafx.scene.layout.GridPane;
 
 import java.time.LocalDate;
+import java.util.Comparator;
 
 public class Controller {
-    @FXML private TableView<StudentAttendance> attendanceTable;
-    @FXML private TableColumn<StudentAttendance, String> fioCol;
-    @FXML private TableColumn<StudentAttendance, String> groupCol;
-    @FXML private TableColumn<StudentAttendance, LocalDate> dateCol;
-    @FXML private TableColumn<StudentAttendance, Integer> visitsCol;
+    @FXML private TableView<StudentSummary> attendanceTable;
+    @FXML private TableColumn<StudentSummary, String> fioCol;
+    @FXML private TableColumn<StudentSummary, String> groupCol;
+    @FXML private TableColumn<StudentSummary, Integer> visitsCol;
     @FXML private ComboBox<String> group_ComboBox;
     @FXML private DatePicker datePicker;
 
     private final AttendanceBook book = new AttendanceBook();
-    private final ObservableList<StudentAttendance> tableData = FXCollections.observableArrayList();
+    private final ObservableList<StudentSummary> tableData = FXCollections.observableArrayList();
 
     @FXML
     public void initialize() {
-        fioCol.setCellValueFactory(c -> new javafx.beans.property.SimpleStringProperty(c.getValue().getFio()));
-        groupCol.setCellValueFactory(c -> new javafx.beans.property.SimpleStringProperty(c.getValue().getGroup()));
-        dateCol.setCellValueFactory(c -> new javafx.beans.property.SimpleObjectProperty<>(c.getValue().getDate()));
-        visitsCol.setCellValueFactory(c -> new javafx.beans.property.SimpleIntegerProperty(c.getValue().getVisits()).asObject());
-        group_ComboBox.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
-            applyFilters();
-        });
+        fioCol.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().getFio()));
+        groupCol.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().getGroup()));
+        visitsCol.setCellValueFactory(c -> new SimpleIntegerProperty(c.getValue().getVisits()).asObject());
+
+        group_ComboBox.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> applyFilters());
+        datePicker.valueProperty().addListener((obs, oldVal, newVal) -> applyFilters());
 
         attendanceTable.setItems(tableData);
+        refreshTable();
+
+        // 🔹 Обработчик двойного клика
+        attendanceTable.setRowFactory(tv -> {
+            TableRow<StudentSummary> row = new TableRow<>();
+            row.setOnMouseClicked(event -> {
+                if (event.getClickCount() == 2 && !row.isEmpty()) {
+                    StudentSummary summary = row.getItem();
+                    showVisitHistory(summary);
+                }
+            });
+            return row;
+        });
     }
 
+    /** Показать историю посещений выбранного студента */
+    private void showVisitHistory(StudentSummary summary) {
+        // Получаем все даты посещений из истории
+        var visits = book.getAll().stream()
+                .filter(r -> r.getFio().equals(summary.getFio()) && r.getGroup().equals(summary.getGroup()))
+                .map(r -> r.getDate().format(java.time.format.DateTimeFormatter.ofPattern("dd.MM.yyyy")))
+                .sorted()
+                .toList();
+
+        // Создаём ListView для отображения дат
+        ListView<String> listView = new ListView<>(FXCollections.observableArrayList(visits));
+        listView.setPrefHeight(200);
+
+        // Диалоговое окно
+        Dialog<Void> dialog = new Dialog<>();
+        dialog.setTitle("История посещений");
+        dialog.setHeaderText(summary.getFio() + " (" + summary.getGroup() + ")");
+        dialog.getDialogPane().setContent(listView);
+        dialog.getDialogPane().getButtonTypes().add(ButtonType.CLOSE);
+        dialog.showAndWait();
+    }
+
+
+    /** Применение фильтров по группе и дате */
     private void applyFilters() {
         String selectedGroup = group_ComboBox.getSelectionModel().getSelectedItem();
         LocalDate selectedDate = datePicker.getValue();
 
-        tableData.setAll(
-                book.getAll().stream()
-                        .filter(s -> selectedGroup == null || selectedGroup.isBlank() || s.getGroup().equals(selectedGroup))
-                        .filter(s -> selectedDate == null || selectedDate.equals(s.getDate()))
-                        .toList()
-        );
+        if (selectedDate == null && (selectedGroup == null || selectedGroup.isBlank())) {
+            refreshTable();
+            return;
+        }
+
+        if (selectedDate != null) {
+            // Фильтр по дате — показываем только тех, кто был в этот день
+            tableData.setAll(
+                    book.getAll().stream()
+                            .filter(r -> selectedGroup == null || selectedGroup.isBlank() || r.getGroup().equals(selectedGroup))
+                            .filter(r -> r.getDate().equals(selectedDate))
+                            .map(r -> new StudentSummary(r.getFio(), r.getGroup(), 1))
+                            .toList()
+            );
+        } else {
+            // Фильтр только по группе — агрегируем
+            tableData.setAll(
+                    book.getSummarized().stream()
+                            .filter(s -> selectedGroup == null || selectedGroup.isBlank() || s.getGroup().equals(selectedGroup))
+                            .toList()
+            );
+        }
     }
 
-
-    @FXML
-    private void filterByDate() {
-        LocalDate date = datePicker.getValue();
-        if (date != null) {
-            tableData.setAll(book.filterByDate(date));
-        }
+    /** Обновить таблицу агрегированными данными */
+    private void refreshTable() {
+        tableData.setAll(book.getSummarized());
+        group_ComboBox.setItems(FXCollections.observableArrayList(book.getGroups()));
     }
 
     @FXML
@@ -67,8 +119,7 @@ public class Controller {
         String group = group_ComboBox.getValue();
         if (group != null) {
             book.deleteGroup(group);
-            group_ComboBox.setItems(FXCollections.observableArrayList(book.getGroups()));
-            tableData.setAll(book.getAll());
+            refreshTable();
         }
     }
 
@@ -76,7 +127,7 @@ public class Controller {
     private void resetFilters() {
         datePicker.setValue(null);
         group_ComboBox.setValue(null);
-        tableData.setAll(book.getAll());
+        refreshTable();
     }
 
     @FXML
@@ -85,11 +136,9 @@ public class Controller {
         dialog.setTitle("Добавить запись");
         dialog.setHeaderText("Введите данные студента");
 
-        // Кнопки
         ButtonType okButtonType = new ButtonType("Добавить", ButtonBar.ButtonData.OK_DONE);
         dialog.getDialogPane().getButtonTypes().addAll(okButtonType, ButtonType.CANCEL);
 
-        // Поля ввода
         TextField fioField = new TextField();
         fioField.setPromptText("Фамилия Имя");
 
@@ -99,10 +148,6 @@ public class Controller {
 
         DatePicker datePickerField = new DatePicker(LocalDate.now());
 
-        Spinner<Integer> visitsSpinner = new Spinner<>(0, 1000, 1);
-        visitsSpinner.setEditable(true);
-
-        // Компоновка
         GridPane grid = new GridPane();
         grid.setHgap(10);
         grid.setVgap(10);
@@ -112,49 +157,42 @@ public class Controller {
         grid.add(groupBox, 1, 1);
         grid.add(new Label("Дата:"), 0, 2);
         grid.add(datePickerField, 1, 2);
-        grid.add(new Label("Посещений:"), 0, 3);
-        grid.add(visitsSpinner, 1, 3);
 
         dialog.getDialogPane().setContent(grid);
 
-        // Логика нажатия OK
         dialog.setResultConverter(dialogButton -> {
             if (dialogButton == okButtonType) {
                 String fio = fioField.getText().trim();
                 String group = groupBox.getEditor().getText().trim();
                 LocalDate date = datePickerField.getValue();
-                int visits = visitsSpinner.getValue();
 
                 if (fio.isEmpty() || group.isEmpty() || date == null) {
-                    Alert alert = new Alert(Alert.AlertType.WARNING, "Заполните все поля!", ButtonType.OK);
-                    alert.showAndWait();
+                    new Alert(Alert.AlertType.WARNING, "Заполните все поля!", ButtonType.OK).showAndWait();
                     return null;
                 }
 
-                // Добавляем группу, если новая
                 if (!book.getGroups().contains(group)) {
                     book.addGroup(group);
-                    group_ComboBox.setItems(FXCollections.observableArrayList(book.getGroups()));
                 }
 
-                return new StudentAttendance(fio, group, date, visits);
+                return new StudentAttendance(fio, group, date);
             }
             return null;
         });
 
         dialog.showAndWait().ifPresent(record -> {
             book.addRecord(record);
-            tableData.setAll(book.getAll());
+            refreshTable();
         });
     }
 
-
     @FXML
     private void deleteRecord() {
-        StudentAttendance selected = attendanceTable.getSelectionModel().getSelectedItem();
+        StudentSummary selected = attendanceTable.getSelectionModel().getSelectedItem();
         if (selected != null) {
-            book.deleteRecord(selected);
-            tableData.setAll(book.getAll());
+            // Удаляем все визиты этого студента (по ФИО и группе)
+            book.getAll().removeIf(r -> r.getFio().equals(selected.getFio()) && r.getGroup().equals(selected.getGroup()));
+            refreshTable();
         }
     }
 
@@ -170,13 +208,17 @@ public class Controller {
 
     @FXML
     private void saveToExcel() {
-        book.saveToExcel("attendance.xlsx");
+        book.saveToExcel("Students_Lectures.xlsx");
     }
 
     @FXML
     private void reloadFromExcel() {
-        book.loadFromExcel("attendance.xlsx");
-        tableData.setAll(book.getAll());
-        group_ComboBox.setItems(FXCollections.observableArrayList(book.getGroups()));
+        book.loadFromExcel("Students_Lectures.xlsx");
+        refreshTable();
+    }
+
+    @FXML
+    private void filterByDate() {
+        applyFilters();
     }
 }
