@@ -26,9 +26,25 @@ public class Controller {
         groupCol.setCellValueFactory(c -> new javafx.beans.property.SimpleStringProperty(c.getValue().getGroup()));
         dateCol.setCellValueFactory(c -> new javafx.beans.property.SimpleObjectProperty<>(c.getValue().getDate()));
         visitsCol.setCellValueFactory(c -> new javafx.beans.property.SimpleIntegerProperty(c.getValue().getVisits()).asObject());
+        group_ComboBox.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
+            applyFilters();
+        });
 
         attendanceTable.setItems(tableData);
     }
+
+    private void applyFilters() {
+        String selectedGroup = group_ComboBox.getSelectionModel().getSelectedItem();
+        LocalDate selectedDate = datePicker.getValue();
+
+        tableData.setAll(
+                book.getAll().stream()
+                        .filter(s -> selectedGroup == null || selectedGroup.isBlank() || s.getGroup().equals(selectedGroup))
+                        .filter(s -> selectedDate == null || selectedDate.equals(s.getDate()))
+                        .toList()
+        );
+    }
+
 
     @FXML
     private void filterByDate() {

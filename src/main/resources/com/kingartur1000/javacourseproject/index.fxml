@@ -25,7 +25,7 @@
         <Label text="Фильтры" styleClass="sidebar-title"/>
 
         <Label text="Группа:"/>
-        <ComboBox fx:id="group_ComboBox" promptText="Выбери группу" maxWidth="Infinity"/>
+        <ComboBox fx:id="group_ComboBox" promptText="Выберите группу" maxWidth="Infinity"/>
 
         <Label text="Дата посещения:"/>
         <DatePicker fx:id="datePicker" promptText="YYYY-MM-DD"/>
