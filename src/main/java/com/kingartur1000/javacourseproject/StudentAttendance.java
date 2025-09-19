@@ -16,8 +16,5 @@ public class StudentAttendance {
     public String getFio() { return fio; }
     public String getGroup() { return group; }
     public LocalDate getDate() { return date; }
-
-    public void setFio(String fio) { this.fio = fio; }
-    public void setGroup(String group) { this.group = group; }
-    public void setDate(LocalDate date) { this.date = date; }
 }
+

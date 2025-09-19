@@ -10,24 +10,48 @@ import javafx.scene.control.*;
 import javafx.scene.layout.GridPane;
 
 import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.Comparator;
 
 public class Controller {
-    @FXML private TableView<StudentSummary> attendanceTable;
-    @FXML private TableColumn<StudentSummary, String> fioCol;
-    @FXML private TableColumn<StudentSummary, String> groupCol;
-    @FXML private TableColumn<StudentSummary, Integer> visitsCol;
+    @FXML private TableView<StudentAttendance> attendanceTable;
+    @FXML private TableColumn<StudentAttendance, String> fioCol;
+    @FXML private TableColumn<StudentAttendance, String> groupCol;
+    @FXML private TableColumn<StudentAttendance, LocalDate> dateCol;
+    @FXML private TableColumn<StudentAttendance, Integer> visitsCol;
     @FXML private ComboBox<String> group_ComboBox;
     @FXML private DatePicker datePicker;
 
     private final AttendanceBook book = new AttendanceBook();
-    private final ObservableList<StudentSummary> tableData = FXCollections.observableArrayList();
+    private final ObservableList<StudentAttendance> tableData = FXCollections.observableArrayList();
 
     @FXML
     public void initialize() {
         fioCol.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().getFio()));
         groupCol.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().getGroup()));
-        visitsCol.setCellValueFactory(c -> new SimpleIntegerProperty(c.getValue().getVisits()).asObject());
+        dateCol.setCellValueFactory(c -> new SimpleObjectProperty<>(c.getValue().getDate()));
+
+        // Формат даты в таблице
+        dateCol.setCellFactory(col -> new TableCell<>() {
+            private final DateTimeFormatter fmt = DateTimeFormatter.ofPattern("dd.MM.yyyy");
+            @Override
+            protected void updateItem(LocalDate item, boolean empty) {
+                super.updateItem(item, empty);
+                setText(empty || item == null ? "" : item.format(fmt));
+            }
+        });
+
+        // Кол-во посещений считается автоматически
+        visitsCol.setCellValueFactory(c -> {
+            String fio = c.getValue().getFio();
+            String group = c.getValue().getGroup();
+            long count = book.getAll().stream()
+                    .filter(r -> r.getFio().equals(fio) && r.getGroup().equals(group))
+                    .map(StudentAttendance::getDate)
+                    .distinct()
+                    .count();
+            return new SimpleIntegerProperty((int) count).asObject();
+        });
 
         group_ComboBox.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> applyFilters());
         datePicker.valueProperty().addListener((obs, oldVal, newVal) -> applyFilters());
@@ -35,75 +59,52 @@ public class Controller {
         attendanceTable.setItems(tableData);
         refreshTable();
 
-        // 🔹 Обработчик двойного клика
+        // Двойной клик — показать историю
         attendanceTable.setRowFactory(tv -> {
-            TableRow<StudentSummary> row = new TableRow<>();
+            TableRow<StudentAttendance> row = new TableRow<>();
             row.setOnMouseClicked(event -> {
                 if (event.getClickCount() == 2 && !row.isEmpty()) {
-                    StudentSummary summary = row.getItem();
-                    showVisitHistory(summary);
+                    StudentAttendance sa = row.getItem();
+                    showVisitHistory(sa.getFio(), sa.getGroup());
                 }
             });
             return row;
         });
     }
 
-    /** Показать историю посещений выбранного студента */
-    private void showVisitHistory(StudentSummary summary) {
-        // Получаем все даты посещений из истории
-        var visits = book.getAll().stream()
-                .filter(r -> r.getFio().equals(summary.getFio()) && r.getGroup().equals(summary.getGroup()))
-                .map(r -> r.getDate().format(java.time.format.DateTimeFormatter.ofPattern("dd.MM.yyyy")))
-                .sorted()
-                .toList();
-
-        // Создаём ListView для отображения дат
-        ListView<String> listView = new ListView<>(FXCollections.observableArrayList(visits));
-        listView.setPrefHeight(200);
-
-        // Диалоговое окно
-        Dialog<Void> dialog = new Dialog<>();
-        dialog.setTitle("История посещений");
-        dialog.setHeaderText(summary.getFio() + " (" + summary.getGroup() + ")");
-        dialog.getDialogPane().setContent(listView);
-        dialog.getDialogPane().getButtonTypes().add(ButtonType.CLOSE);
-        dialog.showAndWait();
-    }
-
-
-    /** Применение фильтров по группе и дате */
     private void applyFilters() {
         String selectedGroup = group_ComboBox.getSelectionModel().getSelectedItem();
         LocalDate selectedDate = datePicker.getValue();
 
-        if (selectedDate == null && (selectedGroup == null || selectedGroup.isBlank())) {
-            refreshTable();
-            return;
-        }
-
-        if (selectedDate != null) {
-            // Фильтр по дате — показываем только тех, кто был в этот день
-            tableData.setAll(
-                    book.getAll().stream()
-                            .filter(r -> selectedGroup == null || selectedGroup.isBlank() || r.getGroup().equals(selectedGroup))
-                            .filter(r -> r.getDate().equals(selectedDate))
-                            .map(r -> new StudentSummary(r.getFio(), r.getGroup(), 1))
-                            .toList()
-            );
-        } else {
-            // Фильтр только по группе — агрегируем
-            tableData.setAll(
-                    book.getSummarized().stream()
-                            .filter(s -> selectedGroup == null || selectedGroup.isBlank() || s.getGroup().equals(selectedGroup))
-                            .toList()
-            );
-        }
+        tableData.setAll(
+                book.getAll().stream()
+                        .filter(s -> selectedGroup == null || selectedGroup.isBlank() || s.getGroup().equals(selectedGroup))
+                        .filter(s -> selectedDate == null || selectedDate.equals(s.getDate()))
+                        .toList()
+        );
     }
 
-    /** Обновить таблицу агрегированными данными */
     private void refreshTable() {
-        tableData.setAll(book.getSummarized());
+        tableData.setAll(book.getAll());
         group_ComboBox.setItems(FXCollections.observableArrayList(book.getGroups()));
+    }
+
+    private void showVisitHistory(String fio, String group) {
+        var visits = book.getAll().stream()
+                .filter(r -> r.getFio().equals(fio) && r.getGroup().equals(group))
+                .map(r -> r.getDate().format(DateTimeFormatter.ofPattern("dd.MM.yyyy")))
+                .sorted()
+                .toList();
+
+        ListView<String> listView = new ListView<>(FXCollections.observableArrayList(visits));
+        listView.setPrefHeight(200);
+
+        Dialog<Void> dialog = new Dialog<>();
+        dialog.setTitle("История посещений");
+        dialog.setHeaderText(fio + " (" + group + ")");
+        dialog.getDialogPane().setContent(listView);
+        dialog.getDialogPane().getButtonTypes().add(ButtonType.CLOSE);
+        dialog.showAndWait();
     }
 
     @FXML
@@ -188,32 +189,41 @@ public class Controller {
 
     @FXML
     private void deleteRecord() {
-        StudentSummary selected = attendanceTable.getSelectionModel().getSelectedItem();
+        StudentAttendance selected = attendanceTable.getSelectionModel().getSelectedItem();
         if (selected != null) {
-            // Удаляем все визиты этого студента (по ФИО и группе)
-            book.getAll().removeIf(r -> r.getFio().equals(selected.getFio()) && r.getGroup().equals(selected.getGroup()));
+            book.deleteRecord(selected);
             refreshTable();
         }
     }
 
     @FXML
     private void sortBySurname() {
-        tableData.setAll(book.sortBySurname());
+        tableData.setAll(book.getAll().stream()
+                .sorted(Comparator.comparing(r -> r.getFio().split("\\s+")[0]))
+                .toList());
     }
 
     @FXML
     private void sortByVisit() {
-        tableData.setAll(book.sortByVisits());
+        tableData.setAll(book.getAll().stream()
+                .sorted(Comparator.comparingInt((StudentAttendance r) ->
+                        (int) book.getAll().stream()
+                                .filter(x -> x.getFio().equals(r.getFio()) && x.getGroup().equals(r.getGroup()))
+                                .map(StudentAttendance::getDate)
+                                .distinct()
+                                .count()
+                ).reversed())
+                .toList());
     }
 
     @FXML
     private void saveToExcel() {
-        book.saveToExcel("Students_Lectures.xlsx");
+        book.saveToExcel("attendance.xlsx");
     }
 
     @FXML
     private void reloadFromExcel() {
-        book.loadFromExcel("Students_Lectures.xlsx");
+        book.loadFromExcel("attendance.xlsx");
         refreshTable();
     }
 
