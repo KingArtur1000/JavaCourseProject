@@ -1,3 +1,13 @@
+/**
+ * Класс StudentAttendance представляет одну запись о посещении студента.
+ * Содержит ФИО, название группы и дату визита.
+ * Используется как элементарная единица данных в журнале посещаемости (AttendanceBook).
+ *
+ * @author: A.A. Dmitriev
+ * @version: 1.0
+ */
+
+
 package com.kingartur1000.javacourseproject;
 
 import java.time.LocalDate;

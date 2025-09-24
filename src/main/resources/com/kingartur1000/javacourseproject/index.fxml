@@ -1,5 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
+
+<!--
+    Главный интерфейс приложения "Учёт посещаемости".
+    Состоит из двух областей:
+    - Боковое меню (фильтры по группе и дате, управление группами, сброс фильтров).
+    - Основная область (таблица посещений с сортировкой, добавлением/удалением записей,
+      а также кнопками для сохранения и загрузки данных из Excel).
+    Контроллер: com.kingartur1000.javacourseproject.Controller
+    Стили: style.css
+-->
+
+
 <?import javafx.scene.layout.*?>
 <?import javafx.scene.control.*?>
 <?import javafx.collections.FXCollections?>
